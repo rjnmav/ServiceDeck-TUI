@@ -12,28 +12,30 @@ ServiceDeck TUI provides a powerful, real-time interface for monitoring and cont
 
 - **Dual Bus Support**: Effortlessly toggle between `System` and `Session` (User) buses.
 - **Real-time Monitoring**: Instant visibility into unit states (`Active`, `Sub State`, and `Enabled`).
+- **Live Log Viewer**: Press `l` to tail `journalctl` logs for any service with an automatic 2-second refresh interval.
 - **Comprehensive Control**: Start, Stop, Restart, Enable, Disable, Mask, and Unmask services with single keypresses.
 - **Modern TUI**: Built on the robust **Textual** framework for a beautiful and responsive terminal experience.
 
 ## 🚀 Getting Started
 
 ### Prerequisites
-ServiceDeck requires **Python 3.8+** and specific system libraries to interface with D-Bus via `PyGObject`.
+
+ServiceDeck requires **Python 3.8+** and specific system libraries to interface with D-Bus and the Systemd Journal.
 
 #### Debian/Ubuntu
 ```bash
 sudo apt update
-sudo apt install libgirepository1.0-dev libcairo2-dev pkg-config python3-dev
+sudo apt install libgirepository1.0-dev libcairo2-dev pkg-config python3-dev libsystemd-dev
 ```
 
 #### Fedora/RHEL
 ```bash
-sudo dnf install gobject-introspection-devel cairo-devel pkgconf-pkg-config python3-devel
+sudo dnf install gobject-introspection-devel cairo-devel pkgconf-pkg-config python3-devel systemd-devel
 ```
 
 #### Arch Linux
 ```bash
-sudo pacman -S gobject-introspection cairo pkgconf python
+sudo pacman -S gobject-introspection cairo pkgconf python systemd
 ```
 
 
@@ -63,8 +65,10 @@ python main.py
 | Key | Action |
 |:---:|:---|
 | `q` | **Quit** the application |
+| `escape` | **Back** to service list from logs |
 | `t` | **Toggle** between System and User bus |
 | `f` | **Refresh** the service list manually |
+| `l` | **View Logs** for selected unit |
 | `s` | **Start** the selected unit |
 | `x` | **Stop** the selected unit |
 | `r` | **Restart** the selected unit |
@@ -77,9 +81,9 @@ python main.py
 ## 🏗️ Architecture
 
 ServiceDeck is built using a clean **Model-View-Controller (MVC)** pattern:
-- **Model**: Interfaces with `org.freedesktop.systemd1` over D-Bus using `pydbus`.
-- **View**: A reactive TUI layout powered by `Textual`.
-- **Controller**: Manages the state transition and event flow between the Model and View.
+- **Model**: Interfaces with `org.freedesktop.systemd1` over D-Bus and retrieves logs via `systemd.journal`.
+- **View**: A reactive TUI layout powered by `Textual` with dedicated `DataTable` and `RichLog` components.
+- **Controller**: Manages the state transition, event flow, and auto-refresh timers between the Model and View.
 
 ## 📄 License
 

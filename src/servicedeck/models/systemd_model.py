@@ -10,8 +10,6 @@ class SystemdModel:
     def _connect(self):
         try:
             self._bus = SystemBus() if self.use_system_bus else SessionBus()
-            # "org.freedesktop.systemd1" is the service name
-            # "/org/freedesktop/systemd1" is the object path
             self._manager = self._bus.get("org.freedesktop.systemd1", "/org/freedesktop/systemd1")
         except Exception as e:
             raise
@@ -20,11 +18,30 @@ class SystemdModel:
         self.use_system_bus = not self.use_system_bus
         self._connect()
 
+    def get_service_logs(self, service_name: str) -> str:
+        """Fetches all logs for the given service for the current boot."""
+        try:
+            from systemd import journal
+            j = journal.Reader()
+            j.this_boot()
+            
+            if self.use_system_bus:
+                j.add_match(_SYSTEMD_UNIT=service_name)
+            else:
+                j.add_match(_SYSTEMD_USER_UNIT=service_name)
+            
+            j.seek_head()
+            entries = []
+            for entry in j:
+                entries.append(str(entry.get('MESSAGE', '')))
+            
+            return "\n".join(entries)
+        except Exception as e:
+            return f"Error fetching logs: {e}"
+
     def get_services(self):
         """Fetches all loaded service units."""
         try:
-            # ListUnits returns a list of structures:
-            # (name, description, load_state, active_state, sub_state, followed, unit_path, job_id, job_type, job_path)
             units = self._manager.ListUnits()
             services = []
             for unit in units:
@@ -35,7 +52,6 @@ class SystemdModel:
                     sub_state = unit[4]
                     
                     try:
-                        # GetUnitFileState returns 'enabled', 'disabled', 'static', 'masked', etc.
                         unit_file_state = self._manager.GetUnitFileState(name)
                     except Exception:
                         unit_file_state = "unknown"
@@ -47,7 +63,6 @@ class SystemdModel:
                         "sub_state": sub_state,
                         "unit_file_state": unit_file_state.upper()
                     })
-            # Sort by name
             return sorted(services, key=lambda x: x["name"])
         except Exception as e:
             return []

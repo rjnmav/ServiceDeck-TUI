@@ -1,4 +1,5 @@
 from ..models import SystemdModel
+from rich.markup import escape
 
 class AppController:
     """The Controller that manages logic between SystemdModel and ServiceDeckView."""
@@ -14,7 +15,7 @@ class AppController:
             bus_mode = "System" if self.model.use_system_bus else "User"
             self.view.update_table(services, bus_mode)
         except Exception as e:
-            self.view.notify(f"Refresh failed: {e}", severity="error")
+            self.view.notify(f"Refresh failed: {escape(str(e))}", severity="error")
 
     def toggle_bus(self):
         """Toggles the D-Bus connection (User/System) and refreshes."""
@@ -22,24 +23,28 @@ class AppController:
             self.model.toggle_bus()
             self.refresh_data()
         except Exception as e:
-            self.view.notify(f"Failed to switch bus: {e}", severity="error")
+            self.view.notify(f"Failed to switch bus: {escape(str(e))}", severity="error")
+
+    def handle_logs_request(self, service_name: str):
+        """Fetches logs from the model and updates the view."""
+        try:
+            logs = self.model.get_service_logs(service_name)
+            self.view.show_logs(logs, service_name)
+        except Exception as e:
+            self.view.notify(f"Failed to fetch logs: {escape(str(e))}", severity="error")
 
     def handle_action(self, action: str, service_name: str):
         """Executes a unit action via the model and notifies the view."""
         try:
-            # Map action string to model method
             method = getattr(self.model, action)
             method(service_name)
             self.view.notify(f"Successfully requested {action} for {service_name}")
-            # Immediate refresh to show the new state
             self.refresh_data()
             
-            # Since systemd operations (start/stop/restart) are often asynchronous jobs,
-            # we schedule follow-up refreshes to capture the final state.
             if hasattr(self.view, "set_timer"):
                 self.view.set_timer(0.5, self.refresh_data)
                 self.view.set_timer(1.5, self.refresh_data)
         except AttributeError:
             self.view.notify(f"Unknown action: {action}", severity="error")
         except Exception as e:
-            self.view.notify(f"Failed: {e}", severity="error")
+            self.view.notify(f"Failed: {escape(str(e))}", severity="error")

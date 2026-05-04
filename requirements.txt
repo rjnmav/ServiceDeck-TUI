@@ -1,3 +1,4 @@
 textual
 pydbus
 PyGObject
+systemd-python
